@@ -19,7 +19,6 @@ package io.netty.resolver.dns;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.channel.AddressedEnvelope;
-import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoop;
 import io.netty.handler.codec.CorruptedFrameException;
 import io.netty.handler.codec.dns.DefaultDnsQuestion;
@@ -432,7 +431,6 @@ abstract class DnsResolveContext<T> {
                                       queryLifecycleObserver, promise, cause);
             return;
         }
-        final ChannelPromise writePromise = parent.ch.newPromise();
         final Promise<AddressedEnvelope<? extends DnsResponse, InetSocketAddress>> queryPromise =
                 parent.ch.eventLoop().newPromise();
 
@@ -447,11 +445,9 @@ abstract class DnsResolveContext<T> {
         }
 
         final Future<AddressedEnvelope<DnsResponse, InetSocketAddress>> f =
-                parent.query0(nameServerAddr, question, additionals, flush, writePromise, queryPromise);
+                parent.query0(nameServerAddr, question, queryLifecycleObserver, additionals, flush, queryPromise);
 
         queriesInProgress.add(f);
-
-        queryLifecycleObserver.queryWritten(nameServerAddr, writePromise);
 
         f.addListener(new FutureListener<AddressedEnvelope<DnsResponse, InetSocketAddress>>() {
             @Override
@@ -845,9 +841,10 @@ abstract class DnsResolveContext<T> {
                     }
                     if (resolved == null) {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Ignoring record {} as it contains a different name than the " +
-                                            "question name [{}]. Cnames: {}, Search domains: {}",
-                                    r.toString(), questionName, cnames, parent.searchDomains());
+                            logger.debug("{} Ignoring record {} for [{}: {}] as it contains a different name than " +
+                                            "the question name [{}]. Cnames: {}, Search domains: {}",
+                                    parent.ch, r.toString(), response.id(), envelope.sender(), questionName, cnames,
+                                    parent.searchDomains());
                         }
                         continue;
                     }
@@ -857,8 +854,9 @@ abstract class DnsResolveContext<T> {
             final T converted = convertRecord(r, hostname, additionals, parent.executor());
             if (converted == null) {
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Ignoring record {} as the converted record is null. hostname [{}], Additionals: {}",
-                            r.toString(), hostname, additionals);
+                    logger.debug("{} Ignoring record {} for [{}: {}] as the converted record is null. "
+                                    + "Hostname [{}], Additionals: {}",
+                            parent.ch, r.toString(), response.id(), envelope.sender(), hostname, additionals);
                 }
                 continue;
             }
