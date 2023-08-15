@@ -103,11 +103,15 @@ public final class CipherSuiteConverter {
     private static final Map<String, String> j2oTls13;
     private static final Map<String, Map<String, String>> o2jTls13;
 
+    private static final Map<String, String> j2oTlcp;
+    private static final Map<String, String> o2jTlcp;
     static {
         Map<String, String> j2oTls13Map = new HashMap<String, String>();
         j2oTls13Map.put("TLS_AES_128_GCM_SHA256", "AEAD-AES128-GCM-SHA256");
         j2oTls13Map.put("TLS_AES_256_GCM_SHA384", "AEAD-AES256-GCM-SHA384");
         j2oTls13Map.put("TLS_CHACHA20_POLY1305_SHA256", "AEAD-CHACHA20-POLY1305-SHA256");
+        j2oTls13Map.put("TLS_SM4_GCM_SM3", "TLS_SM4_GCM_SM3");
+        j2oTls13Map.put("TLS_SM4_CCM_SM3", "TLS_SM4_CCM_SM3");
         j2oTls13 = Collections.unmodifiableMap(j2oTls13Map);
 
         Map<String, Map<String, String>> o2jTls13Map = new HashMap<String, Map<String, String>>();
@@ -117,7 +121,21 @@ public final class CipherSuiteConverter {
         o2jTls13Map.put("AEAD-AES128-GCM-SHA256", singletonMap("TLS", "TLS_AES_128_GCM_SHA256"));
         o2jTls13Map.put("AEAD-AES256-GCM-SHA384", singletonMap("TLS", "TLS_AES_256_GCM_SHA384"));
         o2jTls13Map.put("AEAD-CHACHA20-POLY1305-SHA256", singletonMap("TLS", "TLS_CHACHA20_POLY1305_SHA256"));
+        o2jTls13Map.put("TLS_SM4_GCM_SM3", singletonMap("TLS", "TLS_SM4_GCM_SM3"));
+        o2jTls13Map.put("TLS_SM4_CCM_SM3", singletonMap("TLS", "TLS_SM4_CCM_SM3"));
         o2jTls13 = Collections.unmodifiableMap(o2jTls13Map);
+        Map<String, String> j2oTlcpMap = new HashMap<String, String>();
+        j2oTlcpMap.put("TLCP_ECDHE_SM4_CBC_SM3", "ECDHE-SM2-SM4-CBC-SM3");
+        j2oTlcpMap.put("TLCP_ECDHE_SM4_GCM_SM3", "ECDHE-SM2-SM4-GCM-SM3");
+        j2oTlcpMap.put("TLCP_ECC_SM4_CBC_SM3", "ECC-SM2-SM4-CBC-SM3");
+        j2oTlcpMap.put("TLCP_ECC_SM4_GCM_SM3", "ECC-SM2-SM4-GCM-SM3");
+        j2oTlcp = Collections.unmodifiableMap(j2oTlcpMap);
+        Map<String, String> o2jTlcpMap = new HashMap<String, String>();
+        o2jTlcpMap.put("ECDHE-SM2-SM4-CBC-SM3", "TLCP_ECDHE_SM4_CBC_SM3");
+        o2jTlcpMap.put("ECDHE-SM2-SM4-GCM-SM3", "TLCP_ECDHE_SM4_GCM_SM3");
+        o2jTlcpMap.put("ECC-SM2-SM4-CBC-SM3", "TLCP_ECC_SM4_CBC_SM3");
+        o2jTlcpMap.put("ECC-SM2-SM4-GCM-SM3", "TLCP_ECC_SM4_GCM_SM3");
+        o2jTlcp = Collections.unmodifiableMap(o2jTlcpMap);
     }
 
     /**
@@ -164,6 +182,10 @@ public final class CipherSuiteConverter {
         String converted = j2oTls13.get(javaCipherSuite);
         if (converted != null) {
             return boringSSL ? converted : javaCipherSuite;
+        }
+        converted = j2oTlcp.get(javaCipherSuite);
+        if (converted != null) {
+            return converted;
         }
 
         String openSslCipherSuite = toOpenSslUncached(javaCipherSuite, boringSSL);
@@ -282,6 +304,10 @@ public final class CipherSuiteConverter {
      * @return The translated cipher suite name according to java conventions. This will not be {@code null}.
      */
     public static String toJava(String openSslCipherSuite, String protocol) {
+        String javaTlcpCiperSuite = o2jTlcp.get(openSslCipherSuite);
+        if (javaTlcpCiperSuite != null) {
+            return javaTlcpCiperSuite;
+        }
         Map<String, String> p2j = o2j.get(openSslCipherSuite);
         if (p2j == null) {
             p2j = cacheFromOpenSsl(openSslCipherSuite);

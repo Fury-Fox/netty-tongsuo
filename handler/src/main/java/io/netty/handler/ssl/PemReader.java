@@ -157,7 +157,7 @@ final class PemReader {
                 " (see https://netty.io/wiki/sslcontextbuilder-and-private-key.html for more information)");
     }
 
-    private static String readContent(InputStream in) throws IOException {
+    static String readContent(InputStream in) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             byte[] buf = new byte[8192];

@@ -20,6 +20,7 @@ import io.netty.internal.tcnative.SSL;
 import java.io.File;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Map;
 
@@ -364,6 +365,28 @@ public final class OpenSslServerContext extends OpenSslContext {
         }
     }
 
+    OpenSslServerContext(
+            String[] trustCerts, GMCertEntry encCert,
+            GMCertEntry signCert, String keyPassword, Certificate[] keyCertChain,
+            Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn,
+            long sessionCacheSize, long sessionTimeout, ClientAuth clientAuth, String[] protocols, boolean startTls,
+            boolean enableOcsp) throws Exception {
+
+        super(ciphers, cipherFilter, toNegotiator(apn), SSL.SSL_MODE_SERVER, keyCertChain, clientAuth, protocols,
+                startTls, enableOcsp);
+        // Create a new SSL_CTX and configure it.
+        boolean success = false;
+        try {
+            sessionContext = newSessionContext(this, ctx, engineMap, trustCerts, encCert, signCert, keyPassword,
+                    sessionCacheSize, sessionTimeout);
+
+            success = true;
+        } finally {
+            if (!success) {
+                release();
+            }
+        }
+    }
     @Override
     public OpenSslServerSessionContext sessionContext() {
         return sessionContext;
