@@ -2096,6 +2096,10 @@ public class ReferenceCountedOpenSslEngine extends SSLEngine implements Referenc
                 return "TLS";
             case 'S':
                 return "SSL";
+            case 'G':
+                return "GMTLS";
+            case 'N':
+                return "GMTLS";
             default:
                 return "UNKNOWN";
         }

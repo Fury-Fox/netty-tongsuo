@@ -317,4 +317,65 @@ public final class ReferenceCountedOpenSslClientContext extends ReferenceCounted
             }
         }
     }
+    /**
+     * 设置国密相关参数并获取一个IfscSslSessionContext
+     *
+     * @param thiz        一个IfscSslClientContext对象，同时也是IfscSslContext和ReferenceCountedIfscSslContext的子类
+     * @param ctx         SLContext句柄
+     * @param engineMap   所用的engine
+     * @param trustCerts  信任证书集合
+     * @param encCert     客户端加密证书和私钥
+     * @param signCert    客户端签名证书和私钥
+     * @param keyPassword 私钥解密口令
+     * @return IfscSslSessionContext对象
+     * @throws SSLException 发生异常
+     */
+    @SuppressJava6Requirement(reason = "Guarded by java version check")
+    static OpenSslSessionContext newSessionContext(ReferenceCountedOpenSslContext thiz, long ctx,
+            OpenSslEngineMap engineMap,
+            String[] trustCerts,
+            GMCertEntry encCert, GMCertEntry signCert, String keyPassword) throws SSLException {
+        /**
+         * 作为客户端，可以设置客户端证书，也可以不设置客户端证书
+         * 如果不设置客户端证书，服务器又要求进行双向SSL的时候，握手会失败
+         */
+        try {
+            // 如果外部没有传，则创建一个临时变量
+            if (null == encCert) {
+                encCert = new GMCertEntry(null, null);
+            }
+            if (null == signCert) {
+                signCert = new GMCertEntry(null, null);
+            }
+            setKeyMaterial(ctx, encCert.getCert(), encCert.getKey(), signCert.getCert(), signCert.getKey(),
+                    keyPassword);
+        } catch (Exception e) {
+            throw new SSLException("failed to set certificate and key", e);
+        }
+
+        SSLContext.setVerify(ctx, SSL.SSL_CVERIFY_NONE, VERIFY_DEPTH);
+        // 设置信任证书集合
+        try {
+            final X509TrustManager manager = buildGMTrustManager(trustCerts);
+
+            // IMPORTANT: The callbacks set for verification must be static to prevent
+            // memory leak as
+            // otherwise the context can never be collected. This is because the JNI code
+            // holds
+            // a global reference to the callbacks.
+            //
+            // See https://github.com/netty/netty/issues/5372
+
+            // Use this to prevent an error when running on java < 7
+            if (useExtendedTrustManager(manager)) {
+                SSLContext.setCertVerifyCallback(ctx,
+                        new ExtendedTrustManagerVerifyCallback(engineMap, (X509ExtendedTrustManager) manager));
+            } else {
+                SSLContext.setCertVerifyCallback(ctx, new TrustManagerVerifyCallback(engineMap, manager));
+            }
+        } catch (Exception e) {
+            throw new SSLException("unable to setup trustmanager", e);
+        }
+        return new OpenSslClientSessionContext(thiz, null);
+    }
 }

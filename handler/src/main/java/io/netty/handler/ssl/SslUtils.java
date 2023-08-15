@@ -54,7 +54,7 @@ final class SslUtils {
     static final Set<String> TLSV13_CIPHERS = Collections.unmodifiableSet(new LinkedHashSet<String>(
             asList("TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256",
                           "TLS_AES_128_GCM_SHA256", "TLS_AES_128_CCM_8_SHA256",
-                          "TLS_AES_128_CCM_SHA256")));
+                    "TLS_AES_128_CCM_SHA256", "TLS_SM4_GCM_SM3", "TLS_SM4_CCM_SM3")));
 
     /**
      * GMSSL Protocol Version
@@ -105,7 +105,7 @@ final class SslUtils {
 
     static final String[] DEFAULT_CIPHER_SUITES;
     static final String[] DEFAULT_TLSV13_CIPHER_SUITES;
-    static final String[] TLSV13_CIPHER_SUITES = { "TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384" };
+    static final String[] TLSV13_CIPHER_SUITES = { "TLS_SM4_GCM_SM3", "TLS_SM4_CCM_SM3" };
 
     private static final boolean TLSV1_3_JDK_SUPPORTED;
     private static final boolean TLSV1_3_JDK_DEFAULT_ENABLED;
@@ -133,7 +133,19 @@ final class SslUtils {
         defaultCiphers.add("TLS_RSA_WITH_AES_128_CBC_SHA");
         // AES256 requires JCE unlimited strength jurisdiction policy files.
         defaultCiphers.add("TLS_RSA_WITH_AES_256_CBC_SHA");
+        defaultCiphers.add("NTLS_ECDHE_WITH_SM4_SM3");
+        defaultCiphers.add("NTLS_ECC_WITH_SM4_SM3");
+        defaultCiphers.add("TLS_ECDHE_WITH_SM4_SM3");
+        defaultCiphers.add("TLS_ECC_WITH_SM4_SM3");
+        defaultCiphers.add("TLS_ECC_SM4_CBC_SM3");
+        defaultCiphers.add("TLS_ECDHE_SM4_CBC_SM3");
 
+        defaultCiphers.add("TLCP_ECC_SM4_CBC_SM3");
+        defaultCiphers.add("TLCP_ECDHE_SM4_CBC_SM3");
+        defaultCiphers.add("TLCP_ECC_SM4_GCM_SM3");
+        defaultCiphers.add("TLCP_ECDHE_SM4_GCM_SM3");
+        defaultCiphers.add("TLS_SM4_GCM_SM3");
+        defaultCiphers.add("TLS_SM4_CCM_SM3");
         Collections.addAll(defaultCiphers, DEFAULT_TLSV13_CIPHER_SUITES);
 
         DEFAULT_CIPHER_SUITES = defaultCiphers.toArray(EmptyArrays.EMPTY_STRINGS);

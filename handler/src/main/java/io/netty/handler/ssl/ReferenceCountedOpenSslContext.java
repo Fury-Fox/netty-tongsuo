@@ -283,8 +283,7 @@ public abstract class ReferenceCountedOpenSslContext extends SslContext implemen
             boolean tlsv13Supported = OpenSsl.isTlsv13Supported();
 
             try {
-                int protocolOpts = SSL.SSL_PROTOCOL_SSLV3 | SSL.SSL_PROTOCOL_TLSV1 |
-                        SSL.SSL_PROTOCOL_TLSV1_1 | SSL.SSL_PROTOCOL_TLSV1_2;
+                int protocolOpts = SSL.SSL_PROTOCOL_TLSV1_1 | SSL.SSL_PROTOCOL_TLSV1_2;
                 if (tlsv13Supported) {
                     protocolOpts |= SSL.SSL_PROTOCOL_TLSV1_3;
                 }
@@ -1143,6 +1142,57 @@ public abstract class ReferenceCountedOpenSslContext extends SslContext implemen
         @Override
         public int algorithmId() {
             return compressionAlgorithm.algorithmId();
+        }
+    }
+    static void setKeyMaterial(long ctx, String encCert, String encKey, String signCert, String signKey,
+            String keyPassword) throws SSLException {
+        long encKeyBio = 0;
+        long signKeyBio = 0;
+        long encCertBio = 0;
+        long signCertBio = 0;
+        PemEncoded encoded = null;
+        try {
+            /**
+             * 1.作为服务端,在{@SslContextGMBuilder}中做了控制，必须要传加密证书和签名证书，这里不需要考虑
+             * 2.作为客户端,有可能没有传加密证书和签名证书.在底层openssl中做了限制，如果传了就认为是双向SSL,没有传
+             * 就是单向.并且证书和私钥要齐全
+             */
+            if (null != encCert &&
+                    !encCert.isEmpty() &&
+                    null != encKey &&
+                    !encKey.isEmpty() &&
+                    null != signCert &&
+                    !signCert.isEmpty() &&
+                    null != signKey &&
+                    !signKey.isEmpty()) {
+                ByteBufAllocator allocator = ByteBufAllocator.DEFAULT;
+                encoded = PemX509Certificate.toPEM(allocator, true, encCert);
+                encCertBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+                encoded = PemX509Certificate.toPEM(allocator, true, signCert);
+                signCertBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+                encoded = PemPrivateKey.toPEM(allocator, true, encKey);
+                encKeyBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+                encoded = PemPrivateKey.toPEM(allocator, true, signKey);
+                signKeyBio = toBIO(allocator, encoded.retain());
+                encoded.release();
+            }
+            SSLContext.setCertificateExtBio(ctx, encCertBio, encKeyBio, signCertBio, signKeyBio,
+                    keyPassword == null ? StringUtil.EMPTY_STRING : keyPassword);
+        } catch (SSLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SSLException("failed to set certificate and key", e);
+        } finally {
+            freeBio(encKeyBio);
+            freeBio(signKeyBio);
+            freeBio(encCertBio);
+            freeBio(signCertBio);
+            if (encoded != null && encoded.refCnt() > 0) {
+                encoded.release();
+            }
         }
     }
 }

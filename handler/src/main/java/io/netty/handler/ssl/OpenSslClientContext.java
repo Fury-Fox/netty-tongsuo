@@ -204,6 +204,20 @@ public final class OpenSslClientContext extends OpenSslContext {
         }
     }
 
+    OpenSslClientContext(String[] trustCerts, GMCertEntry encCert, GMCertEntry signCert, String keyPassword,
+            Iterable<String> ciphers, CipherSuiteFilter cipherFilter, ApplicationProtocolConfig apn, String[] protocols,
+            long sessionCacheSize, long sessionTimeout, boolean enableOcsp) throws SSLException {
+        super(ciphers, cipherFilter, apn, SSL.SSL_MODE_CLIENT, null, ClientAuth.NONE, protocols, false, enableOcsp);
+        boolean success = false;
+        try {
+            sessionContext = newSessionContext(this, ctx, engineMap, trustCerts, encCert, signCert, keyPassword);
+            success = true;
+        } finally {
+            if (!success) {
+                release();
+            }
+        }
+    }
     @Override
     public OpenSslSessionContext sessionContext() {
         return sessionContext;

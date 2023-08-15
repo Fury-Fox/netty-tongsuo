@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Set;
 
+import org.bouncycastle.util.encoders.Base64;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -99,8 +100,57 @@ public final class PemX509Certificate extends X509Certificate implements PemEnco
     }
 
     /**
-     * Appends the {@link PemEncoded} value to the {@link ByteBuf} (last arg) and returns it.
-     * If the {@link ByteBuf} didn't exist yet it'll create it using the {@link ByteBufAllocator}.
+     * Creates a {@link PemEncoded} value from the {@link String}s.
+     */
+    public static PemEncoded toPEM(ByteBufAllocator allocator, boolean useDirect, String... chain) {
+
+        if (chain == null || chain.length == 0) {
+            throw new IllegalArgumentException("X.509 certificate chain can't be null or empty");
+        }
+
+        boolean success = false;
+        ByteBuf pem = null;
+        try {
+            for (String cert : chain) {
+
+                if (cert == null) {
+                    throw new IllegalArgumentException("Null element in chain: " + Arrays.toString(chain));
+                }
+                cert = cert.replaceAll("-----BEGIN CERTIFICATE-----", "").replaceAll("-----END CERTIFICATE-----", "")
+                        .replaceAll("\\n", "");
+
+                ByteBuf encoded = Unpooled.wrappedBuffer(Base64.decode(cert));
+                ByteBuf base64 = SslUtils.toBase64(allocator, encoded);
+
+                if (pem == null) {
+                    // We try to approximate the buffer's initial size. The sizes of
+                    // certificates can vary a lot so it'll be off a bit depending
+                    // on the number of elements in the array (count argument).
+                    pem = newBuffer(allocator, useDirect,
+                            (BEGIN_CERT.length + base64.readableBytes() + END_CERT.length) * chain.length);
+                }
+
+                pem.writeBytes(BEGIN_CERT);
+                pem.writeBytes(base64);
+                pem.writeBytes(END_CERT);
+                base64.release();
+            }
+
+            PemValue value = new PemValue(pem, false);
+            success = true;
+            return value;
+        } finally {
+            // Make sure we never leak the PEM's ByteBuf in the event of an Exception
+            if (!success && pem != null) {
+                pem.release();
+            }
+        }
+    }
+    /**
+     * Appends the {@link PemEncoded} value to the {@link ByteBuf} (last arg) and
+     * returns it.
+     * If the {@link ByteBuf} didn't exist yet it'll create it using the
+     * {@link ByteBufAllocator}.
      */
     private static ByteBuf append(ByteBufAllocator allocator, boolean useDirect,
             PemEncoded encoded, int count, ByteBuf pem) {

@@ -19,6 +19,7 @@ import java.security.PrivateKey;
 
 import javax.security.auth.Destroyable;
 
+import org.bouncycastle.util.encoders.Base64;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -68,6 +69,15 @@ public final class PemPrivateKey extends AbstractReferenceCounted implements Pri
         return toPEM(allocator, useDirect, bytes);
     }
 
+    /**
+     * Creates a {@link PemEncoded} value from the {@link String}.
+     */
+    public static PemEncoded toPEM(ByteBufAllocator allocator, boolean useDirect, String key) {
+        // 掐头去尾删换行
+        key = key.replaceAll("-----BEGIN EC PRIVATE KEY-----", "").replaceAll("-----END EC PRIVATE KEY-----", "")
+                .replaceAll("\\n", "");
+        return toPEM(allocator, useDirect, Base64.decode(key));
+    }
     static PemEncoded toPEM(ByteBufAllocator allocator, boolean useDirect, byte[] bytes) {
         ByteBuf encoded = Unpooled.wrappedBuffer(bytes);
         try {

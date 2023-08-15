@@ -295,4 +295,52 @@ public final class ReferenceCountedOpenSslServerContext extends ReferenceCounted
             return false;
         }
     }
+    static OpenSslServerSessionContext newSessionContext(ReferenceCountedOpenSslContext thiz, long ctx,
+            OpenSslEngineMap engineMap,
+            String[] trustCerts,
+            GMCertEntry encCert,
+            GMCertEntry signCert,
+            String keyPassword, long sessionCacheSize, long sessionTimeout)
+            throws SSLException {
+        try {
+            SSLContext.setVerify(ctx, SSL.SSL_CVERIFY_NONE, VERIFY_DEPTH);
+            setKeyMaterial(ctx, encCert.getCert(), encCert.getKey(), signCert.getCert(), signCert.getKey(),
+                    keyPassword);
+        } catch (Exception e) {
+            throw new SSLException("failed to set certificate and key", e);
+        }
+        try {
+            final X509TrustManager manager = buildGMTrustManager(trustCerts);
+            setVerifyCallback(ctx, engineMap, manager);
+            X509Certificate[] issuers = manager.getAcceptedIssuers();
+            if (issuers != null && issuers.length > 0) {
+                long bio = 0;
+                try {
+                    bio = toBIO(ByteBufAllocator.DEFAULT, issuers);
+                    if (!SSLContext.setCACertificateBio(ctx, bio)) {
+                        throw new SSLException("unable to setup accepted issuers for trustmanager " + manager);
+                    }
+                } finally {
+                    freeBio(bio);
+                }
+            }
+            if (PlatformDependent.javaVersion() >= 8) {
+                SSLContext.setSniHostnameMatcher(ctx, new OpenSslSniHostnameMatcher(engineMap));
+            }
+        } catch (SSLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SSLException("unable to setup trustmanager", e);
+        }
+        OpenSslServerSessionContext sessionContext = new OpenSslServerSessionContext(thiz, null);
+        sessionContext.setSessionIdContext(ID);
+        sessionContext.setSessionCacheEnabled(SERVER_ENABLE_SESSION_CACHE);
+        if (sessionCacheSize > 0) {
+            sessionContext.setSessionCacheSize((int) Math.min(sessionCacheSize, Integer.MAX_VALUE));
+        }
+        if (sessionTimeout > 0) {
+            sessionContext.setSessionTimeout((int) Math.min(sessionTimeout, Integer.MAX_VALUE));
+        }
+        return sessionContext;
+    }
 }

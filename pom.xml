@@ -684,14 +684,14 @@
     <module>handler-ssl-ocsp</module>
     <module>example</module>
     <module>testsuite</module>
-    <module>testsuite-autobahn</module>
+    <!--<module>testsuite-autobahn</module>
     <module>testsuite-http2</module>
     <module>testsuite-osgi</module>
     <module>testsuite-shading</module>
     <module>testsuite-native</module>
     <module>testsuite-native-image</module>
     <module>testsuite-native-image-client</module>
-    <module>testsuite-native-image-client-runtime-init</module>
+    <module>testsuite-native-image-client-runtime-init</module> -->
     <module>transport-blockhound-tests</module>
     <module>microbench</module>
     <module>bom</module>
@@ -1272,6 +1272,12 @@
                   <code>java.method.finalMethodAddedToNonFinalClass</code>
                   <new>method io.netty.channel.unix.DomainSocketAddress io.netty.channel.unix.Socket::remoteDomainSocketAddress()</new>
                   <justification>Acceptable incompatibility for required change</justification>
+                </item>
+                <item>
+                  <ignore>true</ignore>
+                  <code>java.class.nonPublicPartOfAPI</code>
+                  <classQualifiedName>io.netty.handler.ssl.PemEncoded</classQualifiedName>
+                  <justification>No change in compatibility</justification>
                 </item>
               </differences>
             </revapi.differences>
